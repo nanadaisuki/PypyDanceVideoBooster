@@ -5,19 +5,20 @@ import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
 import com.sun.net.httpserver.spi.HttpServerProvider;
-import java.io.ByteArrayOutputStream;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import static java.lang.Thread.sleep;
 import java.net.HttpURLConnection;
 import java.net.InetSocketAddress;
-import java.net.MalformedURLException;
 import java.net.URL;
-import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -26,17 +27,18 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import static pypydancevideobooster.NewJFrame.jLabel1;
-import static pypydancevideobooster.NewJFrame.jProgressBar1;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JProgressBar;
+import javax.swing.SwingConstants;
 
 public class PypyDanceVideoBooster implements HttpHandler {
 
+    boolean dev = false;
+
     public static void main(String[] args) {
-        new NewJFrame().main(args);
         try {
             new PypyDanceVideoBooster().run(args);
             //downloadFile("speedtest-sgp1.digitalocean.com", new File("media/10mb.test"));
@@ -55,6 +57,10 @@ public class PypyDanceVideoBooster implements HttpHandler {
                 if (parm[0].equals("port") && parm[1].matches("\\d{1,6}")) {
                     port = parm[1];
                 }
+                if (parm[0].equals("dev") && parm[1].equals("true")) {
+                    dev = true;
+                    System.out.println("dev mode");
+                }
             }
         }
         File floder = new File("media");
@@ -72,17 +78,25 @@ public class PypyDanceVideoBooster implements HttpHandler {
         }
         HttpServerProvider provider = HttpServerProvider.provider();
         InetSocketAddress address = new InetSocketAddress(Integer.parseInt(port));
-        HttpServer httpServer = provider.createHttpServer(address, 1000);
-        httpServer.setExecutor(e);
-        httpServer.createContext("/", this);
-        httpServer.start();
-        this.wait();
+        while (true) {
+            if (httpServer == null) {
+                httpServer = provider.createHttpServer(address, 4);
+                httpServer.setExecutor(e);
+                httpServer.createContext("/", this);
+                httpServer.start();
+                System.out.println("HttpServer launched.");
+            }
+            wait(1000);
+        }
     }
-
+    HttpServer httpServer = null;
     ExecutorService e = Executors.newCachedThreadPool();
 
     @Override
     public void handle(HttpExchange http) {
+        System.gc();
+        System.err.println("Activiting threads: " + ((ThreadPoolExecutor) e).getActiveCount());
+        printMemory();
         if (((ThreadPoolExecutor) e).getActiveCount() > 2) {
             System.out.println("Hey...");
         }
@@ -91,7 +105,9 @@ public class PypyDanceVideoBooster implements HttpHandler {
         }
         if (((ThreadPoolExecutor) e).getActiveCount() > 4) {
             System.out.println("nooooooooooooooooo!!");
-            System.exit(0);
+            if (!dev) {
+                System.exit(0);
+            }
         }
 
         String requestHeader = headersToString(http, true);
@@ -106,7 +122,8 @@ public class PypyDanceVideoBooster implements HttpHandler {
         }
         String hostName = http.getRequestURI().getHost();
         System.out.println(hostName);
-        if(!hostName.equals("storage-cdn.llss.io")){
+        if (hostName.equals("storage-jp.llss.io") || hostName.equals("storage-cdn.llss.io")) {
+        } else {
             System.err.println("Bad configure.");
             return;
         }
@@ -134,10 +151,11 @@ public class PypyDanceVideoBooster implements HttpHandler {
         } catch (Exception e) {
             exception(e);
         }
-    }
-
-    private void sendHead(HttpExchange http, File example) {
-
+        if (printMemory() > 512) {
+            System.err.println("Too many memory usage, server will be shutdown.");
+            http.getHttpContext().getServer().stop(1);
+            httpServer = null;
+        }
     }
 
     public String headersToString(HttpExchange http, boolean requestOrResponse) {
@@ -195,46 +213,49 @@ public class PypyDanceVideoBooster implements HttpHandler {
                 this.outputReponseHeaders(http);
                 return;
             }
-            ByteArrayOutputStream baos = new ByteArrayOutputStream((int) f.length());
-            Files.copy(f.toPath(), baos);
-            byte[] bytes;
             List<String> rangeHeader = http.getRequestHeaders().get("Range");
+            int startRange, endRange, rangeLength;
             if (true || rangeHeader == null || rangeHeader.isEmpty()) {
-                bytes = baos.toByteArray();
-                http.sendResponseHeaders(200, bytes.length);
+                startRange = 0;
+                endRange = (int) f.length();
+                rangeLength = endRange - startRange;
+                http.sendResponseHeaders(200, f.length());
             } else {
                 String[] rangeString = rangeHeader.get(0).replace("bytes=", "").split("-");
-                int[] range = new int[2];
-                int reponseCode = 206;
-                int rangeLength = rangeString.length;
-                if (rangeLength == 1) {
-                    rangeString = new String[]{rangeString[0], String.valueOf(f.length())};
-                    if (rangeString[0].equals("0")) {
-                        reponseCode = 206;
-                    }
+                if (rangeString.length == 1) {
+                    startRange = Integer.parseInt(rangeString[0]);
+                    endRange = (int) f.length();
+                } else {
+                    startRange = Integer.parseInt(rangeString[0]);
+                    endRange = Integer.parseInt(rangeString[1]);
                 }
-                range[0] = Integer.parseInt(rangeString[0]);
-                range[1] = Integer.parseInt(rangeString[1]);
-                range[1] = rangeLength == 1 ? range[1] : range[1] + 1;
-                System.out.println("Request range " + range[0] + "-" + range[1]);
-                headers.add("Content-Range", range[0] + "-" + (range[1] - 1) + "/" + f.length());
-                bytes = new byte[range[1] - range[0]];
-                System.out.println("step1");
-                System.arraycopy(baos.toByteArray(), range[0], bytes, 0, range[1] - range[0]);
-                System.out.println("step2");
-                http.sendResponseHeaders(206, bytes.length);
+                rangeLength = endRange - startRange;
+                System.out.println("Request range " + startRange + "-" + endRange);
+                headers.add("Content-Range", startRange + "-" + endRange + "/" + f.length());
+                http.sendResponseHeaders(206, rangeLength);
 
             }
 
             this.outputReponseHeaders(http);
-            OutputStream responseBody = http.getResponseBody();
+            byte[] buffer = new byte[rangeLength];
+            BufferedInputStream bis = new BufferedInputStream(new FileInputStream(f));
+            //BufferedOutputStream bos = new BufferedOutputStream(http.getResponseBody());
+            OutputStream bos = http.getResponseBody();
             try {
-                responseBody.write(bytes);
+                bis.read(buffer, startRange, rangeLength);
+
+                bos.write(buffer);
             } catch (Exception e) {
-                exception(e);
+                System.err.println("close with exception: " + e.getLocalizedMessage());
+                Thread.currentThread().interrupt();
             } finally {
-                System.out.println("close");
-                responseBody.close();
+                buffer = null;
+                http.close();
+                bis.close();
+
+                bos.close();
+                System.out.println("connection close");
+                System.gc();
             }
         } else {
             if (downloadFile("storage-cdn.llss.io", f, http.getResponseBody())) {
@@ -286,22 +307,56 @@ public class PypyDanceVideoBooster implements HttpHandler {
             }
             int bufferSize = length;
             byte[] buffer = new byte[bufferSize];
+            BufferedInputStream bis = new BufferedInputStream(is);
             System.out.println("Download connection ok.");
             FileOutputStream fos = new FileOutputStream(outputFile);
             System.out.println("Download output stream ok.");
+            JFrame jFrame = new JFrame();
+            jFrame.setSize(300, 80);
+            JLabel jLabel = new JLabel();
+            JProgressBar jProgressBar = new JProgressBar();
+            jLabel.setSize(300, 50);
+            jLabel.setText("name");
+            jLabel.setHorizontalAlignment(SwingConstants.CENTER);
+            jLabel.setVerticalAlignment(SwingConstants.CENTER);
+            jFrame.add(jLabel);
+            jProgressBar.setValue(50);
+            jFrame.add(jProgressBar);
+            jFrame.addWindowListener(new WindowAdapter() {
+                InputStream is;
+
+                @Override
+                public void windowClosing(WindowEvent e) {
+                    try {
+                        is.close();
+                    } catch (IOException ex) {
+                        exception(ex);
+                    }
+                }
+
+                public WindowAdapter addCallback(InputStream is) {
+                    this.is = is;
+                    return this;
+                }
+            }.addCallback(is));
+            jFrame.setTitle("Downloading...");
+            jFrame.setResizable(false);
+            jFrame.setVisible(true);
+
             int readCount = 0, lastCount = 0, updateRate = 25;
-            if (jLabel1 != null) {
-                jLabel1.setText(outputFile.getName());
-            }
+            jLabel.setText(outputFile.getName());
             while (readCount < length) {
                 int remain = length - readCount;
-                readCount += is.read(buffer, readCount, remain);
+
+                readCount += bis.read(buffer, readCount, remain);
                 if (syncStream != null) {
 
                 }
                 int process = (int) ((double) readCount / length * 100);
-                if (jProgressBar1 != null) {
-                    jProgressBar1.setValue(process);
+
+                jProgressBar.setValue(process);
+                if (process > 0) {
+                    jFrame.setTitle(outputFile.getName());
                 }
                 process /= updateRate;
                 if (process != lastCount) {
@@ -310,8 +365,12 @@ public class PypyDanceVideoBooster implements HttpHandler {
                 }
             }
             fos.write(buffer);
+            bis.close();
+            fos.close();
             request.disconnect();
             System.out.println("Download done.");
+            System.gc();
+            jFrame.dispose();
             downloading.remove(outputFile.getName());
             return true;
         } catch (Exception e) {
@@ -319,6 +378,16 @@ public class PypyDanceVideoBooster implements HttpHandler {
             downloading.remove(outputFile.getName());;
             return false;
         }
+    }
+
+    public int printMemory() {
+        double mb = 1024 * 1024 * 1.0;
+        double totalMemory = Runtime.getRuntime().totalMemory() / mb;
+        double freeMemory = Runtime.getRuntime().freeMemory() / mb;
+        double maxMemory = Runtime.getRuntime().maxMemory() / mb;
+        int totalUsage = (int) (totalMemory - freeMemory);
+        System.err.println("TotalUsage: " + totalUsage);
+        return totalUsage;
     }
 
     public static String headersToString(HttpURLConnection request) {
