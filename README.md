@@ -1,3 +1,4 @@
+
 # PypyDanceVideoBooster
 When you play a video, it will create a cache of this video locally. 
 It can save network overhead and boost video loading.
@@ -14,3 +15,9 @@ And my answer to this question is: Although PypyDance provides a great CDN netwo
 
 You can use some methods to introduce the socket to "storage-cdn.llss.io" into this program, and then it will automatically manage your cache. 
 It is worth mentioning that only when a file is fully loaded will it be considered as a valid cache. This is to avoid the "206 partial content loop" when the network is poor. 
+
+![set](https://user-images.githubusercontent.com/83615308/123447321-b651c900-d5a7-11eb-8e66-c80b07925a05.png)
+
+![set2](https://user-images.githubusercontent.com/83615308/123447325-b782f600-d5a7-11eb-94e8-b110bbb4bebb.png)
+
+![U1](https://user-images.githubusercontent.com/83615308/123447327-b81b8c80-d5a7-11eb-8040-8718c58421e9.png)
