@@ -8,7 +8,6 @@ import com.sun.net.httpserver.spi.HttpServerProvider;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -16,6 +15,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.BindException;
 import java.net.HttpURLConnection;
 import java.net.InetSocketAddress;
 import java.net.URL;
@@ -23,7 +23,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map.Entry;
-import java.util.concurrent.Executor;
+import java.util.Scanner;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -33,6 +33,7 @@ import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JProgressBar;
 import javax.swing.SwingConstants;
+import pypydancevideobooster.https.Server;
 
 public class PypyDanceVideoBooster implements HttpHandler {
 
@@ -50,6 +51,7 @@ public class PypyDanceVideoBooster implements HttpHandler {
 
     public synchronized void run(String[] args) throws IOException, InterruptedException {
         String port = null;
+        long youtubeTimeout = 5000;
         for (String arg : args) {
             System.out.println(arg);
             if (arg.charAt(0) == 45 && arg.contains("=")) {
@@ -61,6 +63,10 @@ public class PypyDanceVideoBooster implements HttpHandler {
                     dev = true;
                     System.out.println("dev mode");
                 }
+                if (parm[0].equals("youtubeTimeout") && parm[1].matches("\\d+")) {
+                    youtubeTimeout = Integer.parseInt(parm[1]);
+                    System.out.println("Set youtube timeout to " + youtubeTimeout);
+                }
             }
         }
         File floder = new File("media");
@@ -68,7 +74,6 @@ public class PypyDanceVideoBooster implements HttpHandler {
         System.out.println("Media floder: " + floder.getCanonicalPath());
         System.out.println("Launching the server on port " + port);
         if (port == null) {
-            Integer[] sz = {3, 2};
             List<String> list = new ArrayList(Arrays.asList(args));
             list.add("-port=12345");
             String[] array = new String[list.size()];
@@ -76,17 +81,25 @@ public class PypyDanceVideoBooster implements HttpHandler {
             this.run(array);
             return;
         }
+
+        new Server(youtubeTimeout).start();
+
         HttpServerProvider provider = HttpServerProvider.provider();
         InetSocketAddress address = new InetSocketAddress(Integer.parseInt(port));
         while (true) {
             if (httpServer == null) {
-                httpServer = provider.createHttpServer(address, 4);
-                httpServer.setExecutor(e);
-                httpServer.createContext("/", this);
-                httpServer.start();
-                System.out.println("HttpServer launched.");
+                System.out.println("HttpServer launching...");
+                try {
+                    httpServer = provider.createHttpServer(address, 4);
+                    httpServer.setExecutor(e);
+                    httpServer.createContext("/", this);
+                    httpServer.start();
+                    System.out.println("HttpServer launched.");
+                } catch (BindException e) {
+                    System.err.println(e.getLocalizedMessage());
+                }
             }
-            wait(1000);
+            wait(5000);
         }
     }
     HttpServer httpServer = null;
@@ -122,7 +135,7 @@ public class PypyDanceVideoBooster implements HttpHandler {
         }
         String hostName = http.getRequestURI().getHost();
         System.out.println(hostName);
-        if (hostName.equals("storage-jp.llss.io") || hostName.equals("storage-cdn.llss.io")) {
+        if (dev || hostName.equals("storage-jp.llss.io") || hostName.equals("storage-cdn.llss.io")) {
         } else {
             System.err.println("Bad configure.");
             return;
@@ -155,10 +168,13 @@ public class PypyDanceVideoBooster implements HttpHandler {
             System.err.println("Too many memory usage, server will be shutdown.");
             http.getHttpContext().getServer().stop(1);
             httpServer = null;
+            synchronized (this) {
+                this.notify();
+            }
         }
     }
 
-    public String headersToString(HttpExchange http, boolean requestOrResponse) {
+    public static String headersToString(HttpExchange http, boolean requestOrResponse) {
         Headers headers;
         StringBuilder headerBuilder = new StringBuilder();
         if (requestOrResponse) {
@@ -203,35 +219,40 @@ public class PypyDanceVideoBooster implements HttpHandler {
             headers.add("Connection", "keep-alive");
         }
         headers.add("Content-type", "video/mp4");
-        headers.add("Accept-Ranges", "bytes");
         System.out.println("file: " + f.getPath() + " exists: " + String.valueOf(f.exists()));
         if (f.exists() && f.length() > 0) {
             System.out.println("Request " + http.getRequestURI() + " HIT CACHE!");
             if (onlyHead) {
                 System.out.println("Only head");
+                headers.add("Accept-Ranges", "bytes");
                 http.sendResponseHeaders(200, f.length());
                 this.outputReponseHeaders(http);
                 return;
             }
             List<String> rangeHeader = http.getRequestHeaders().get("Range");
+            List<String> etagHeader = http.getRequestHeaders().get("If-None-Match");
+            List<String> dateHeader = http.getRequestHeaders().get("If-Modified-Since");
+
             int startRange, endRange, rangeLength;
-            if (true || rangeHeader == null || rangeHeader.isEmpty()) {
+            if (false || rangeHeader == null || rangeHeader.isEmpty()) {
                 startRange = 0;
                 endRange = (int) f.length();
                 rangeLength = endRange - startRange;
+                headers.add("Accept-Ranges", "bytes");
                 http.sendResponseHeaders(200, f.length());
             } else {
                 String[] rangeString = rangeHeader.get(0).replace("bytes=", "").split("-");
                 if (rangeString.length == 1) {
                     startRange = Integer.parseInt(rangeString[0]);
-                    endRange = (int) f.length();
+                    endRange = (int) f.length() - 1;
                 } else {
                     startRange = Integer.parseInt(rangeString[0]);
                     endRange = Integer.parseInt(rangeString[1]);
                 }
                 rangeLength = endRange - startRange;
+                rangeLength += 1;// its fixed?
                 System.out.println("Request range " + startRange + "-" + endRange);
-                headers.add("Content-Range", startRange + "-" + endRange + "/" + f.length());
+                headers.add("Content-Range", "bytes " + startRange + "-" + endRange + "/" + f.length());
                 http.sendResponseHeaders(206, rangeLength);
 
             }
@@ -242,12 +263,18 @@ public class PypyDanceVideoBooster implements HttpHandler {
             //BufferedOutputStream bos = new BufferedOutputStream(http.getResponseBody());
             OutputStream bos = http.getResponseBody();
             try {
-                bis.read(buffer, startRange, rangeLength);
+                bis.skip(startRange);
+                bis.read(buffer, 0, rangeLength);
 
                 bos.write(buffer);
             } catch (Exception e) {
+                if (e instanceof IndexOutOfBoundsException) {
+                    System.err.println("bufferSize: " + buffer.length + " start: " + startRange + " rangeLength: " + rangeLength);
+                }
                 System.err.println("close with exception: " + e.getLocalizedMessage());
-                Thread.currentThread().interrupt();
+                if (e.getLocalizedMessage() == null) {
+                    e.printStackTrace();
+                }
             } finally {
                 buffer = null;
                 http.close();
@@ -268,7 +295,7 @@ public class PypyDanceVideoBooster implements HttpHandler {
         }
     }
 
-    static List<String> downloading = new ArrayList();
+    public static List<String> downloading = new ArrayList();
     static long lastCall = System.currentTimeMillis();
 
     private static boolean downloadFile(String host, File outputFile, OutputStream syncStream) {
