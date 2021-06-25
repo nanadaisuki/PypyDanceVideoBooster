@@ -11,9 +11,8 @@ And my answer to this question is: Although PypyDance provides a great CDN netwo
 
 
 
-![upload1](https://user-images.githubusercontent.com/83615308/122561692-298b9600-d010-11eb-8591-4a8f5ba731f7.png)Its default running address is "localhost:12345" 
 
-You can use some methods to introduce the socket to "storage-cdn.llss.io" into this program, and then it will automatically manage your cache. 
+You can use some methods(such is Proxifer) to introduce the socket to "storage-cdn.llss.io" into this program, and then it will automatically manage your cache. 
 It is worth mentioning that only when a file is fully loaded will it be considered as a valid cache. This is to avoid the "206 partial content loop" when the network is poor. 
 
 ![set](https://user-images.githubusercontent.com/83615308/123447321-b651c900-d5a7-11eb-8e66-c80b07925a05.png)
