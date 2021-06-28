@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<ProxifierProfile version="101" platform="Windows" product_id="0" product_minver="310">
+  <Options>
+    <Resolve>
+      <AutoModeDetection enabled="false" />
+      <ViaProxy enabled="true">
+        <TryLocalDnsFirst enabled="false" />
+      </ViaProxy>
+      <ExclusionList>%ComputerName%; localhost; *.local</ExclusionList>
+      <DnsUdpMode>0</DnsUdpMode>
+    </Resolve>
+    <Encryption mode="basic" />
+    <HttpProxiesSupport enabled="true" />
+    <HandleDirectConnections enabled="false" />
+    <ConnectionLoopDetection enabled="true" />
+    <ProcessServices enabled="false" />
+    <ProcessOtherUsers enabled="false" />
+  </Options>
+  <ProxyList>
+    <Proxy id="100" type="SOCKS5">
+      <Address>localhost</Address>
+      <Port>10808</Port>
+      <Options>48</Options>
+    </Proxy>
+    <Proxy id="101" type="HTTPS">
+      <Address>localhost</Address>
+      <Port>10809</Port>
+      <Options>48</Options>
+    </Proxy>
+    <Proxy id="102" type="HTTP">
+      <Address>127.0.0.1</Address>
+      <Port>12345</Port>
+      <Options>48</Options>
+    </Proxy>
+    <Proxy id="103" type="HTTPS">
+      <Address>127.0.0.1</Address>
+      <Port>9999</Port>
+      <Options>50</Options>
+    </Proxy>
+  </ProxyList>
+  <ChainList />
+  <RuleList>
+    <Rule enabled="true">
+      <Name>Direct</Name>
+      <Applications>wv2ray.exe;v2ray.exe</Applications>
+      <Action type="Direct" />
+    </Rule>
+    <Rule enabled="true">
+      <Name>localhost</Name>
+      <Targets>localhost;127.0.0.1;</Targets>
+      <Action type="Direct" />
+    </Rule>
+    <Rule enabled="true">
+      <Name>out_PDVB</Name>
+      <Applications>java.exe; javaw.exe</Applications>
+      <Targets>storage-cdn.llss.io;storage-jp.llss.io;</Targets>
+      <Action type="Direct" />
+    </Rule>
+    <Rule enabled="true">
+      <Name>out_Avatar</Name>
+      <Applications>java.exe; javaw.exe</Applications>
+      <Targets>d348imysud55la.cloudfront.net</Targets>
+      <Action type="Direct" />
+    </Rule>
+    <Rule enabled="true">
+      <Name>out_URL</Name>
+      <Applications>java.exe; javaw.exe</Applications>
+      <Action type="Proxy">100</Action>
+    </Rule>
+    <Rule enabled="true">
+      <Name>PypyDanceVideoBooster</Name>
+      <Targets>storage-cdn.llss.io;storage-jp.llss.io;</Targets>
+      <Action type="Proxy">102</Action>
+    </Rule>
+    <Rule enabled="true">
+      <Name>PypyDance_URL</Name>
+      <Applications>youtube-dl.exe</Applications>
+      <Action type="Proxy">103</Action>
+    </Rule>
+    <Rule enabled="true">
+      <Name>PypyDance_Area</Name>
+      <Targets>storage.llss.io; *.youtube.com;*.google.com;*.googlevideo.com</Targets>
+      <Action type="Proxy">103</Action>
+    </Rule>
+    <Rule enabled="true">
+      <Name>AvatarLimiter</Name>
+      <Applications>vrchat.exe</Applications>
+      <Targets>d348imysud55la.cloudfront.net</Targets>
+      <Action type="Proxy">103</Action>
+    </Rule>
+    <Rule enabled="true">
+      <Name>Default</Name>
+      <Action type="Direct" />
+    </Rule>
+  </RuleList>
+</ProxifierProfile>
