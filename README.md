@@ -3,6 +3,10 @@
 When you play a video, it will create a cache of this video locally. 
 It can save network overhead and boost video loading.
 
+***The Software is updateing, all releases has already has been removed.**
+
+***The new version will enable compression to reduce hard drive usage.**
+
 The full version of this software will be released within two weeks, and the beta version will be released within one week. 
 
 Maybe some people will ask me: "PypyDance already has a great CDN network, why do you want to make this program?" 
