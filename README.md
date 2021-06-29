@@ -16,9 +16,10 @@ Because the api was changed to https, this caused the main function to fail. Alt
   2. Run cmd and execute command "keytool -genkey -keyalg rsa", no matter what it asks you, answer "jd.pypy.moe".
   3. You will got a ".keystore" file in your user home directory, then execute command "keytool -export -keystore .keystore -file publickey.cer".
   4. You will get an HTTPS certificate, but it is not legal yet, so you need to force the operating system to trust this certificate and install it to the trusted root certification authority directory with your mmc console. You can find related tutorials on Google. 
-  5. Install Proxifier and open RuleList.ppx file, the file can be download from main page.
-  6. Open the privacy window of your browser, then enter the link "https://jd.pypy.moe/api/v1/videos/GNxgQK50KWE.mp4", when browser says you are at risk, click Advanced and click Continue.
-  7. Now is the time to witness the miracle, if you do nothing wrong, Marshell will appear on your screen. 
+  5. Run cmd and execute command "java -jar PypyDanceVideoBooster.jar -port=12345 -dev=true", you can see "HttpsServer launched".
+  6. Install Proxifier and open RuleList.ppx file, the file can be download from main page.
+  7. Open the privacy window of your browser, then enter the link "https://jd.pypy.moe/api/v1/videos/GNxgQK50KWE.mp4", when browser says you are at risk, click Advanced and click Continue.
+  8. Now is the time to witness the miracle, if you do nothing wrong, Marshell will appear on your screen. 
 
 Finally, this is a hasty development. The old CDN network is still being used. In future versions, it will be switched to the new CDN network in a more friendly way, and network bandwidth consumption will be further improved. 
 
