@@ -40,6 +40,11 @@
   </ProxyList>
   <ChainList />
   <RuleList>
+    <Rule enabled="false">
+      <Name>New</Name>
+      <Applications>youtube-dl.exe</Applications>
+      <Action type="Proxy">100</Action>
+    </Rule>
     <Rule enabled="true">
       <Name>Direct</Name>
       <Applications>wv2ray.exe;v2ray.exe</Applications>
@@ -47,7 +52,7 @@
     </Rule>
     <Rule enabled="true">
       <Name>localhost</Name>
-      <Targets>localhost;127.0.0.1;</Targets>
+      <Targets>localhost;127.0.0.1;jd.pypy.moe</Targets>
       <Action type="Direct" />
     </Rule>
     <Rule enabled="true">
