@@ -31,9 +31,12 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
+import static javax.swing.JOptionPane.ERROR_MESSAGE;
 import javax.swing.JProgressBar;
 import javax.swing.SwingConstants;
 import pypydancevideobooster.https.Server;
+import pypydancevideobooster.https.Server2;
 
 public class PypyDanceVideoBooster implements HttpHandler {
 
@@ -41,11 +44,21 @@ public class PypyDanceVideoBooster implements HttpHandler {
 
     public static void main(String[] args) {
         try {
+            checkRunWithCmd(args);
+            new Server2().s();
             new PypyDanceVideoBooster().run(args);
-            //downloadFile("speedtest-sgp1.digitalocean.com", new File("media/10mb.test"));
-            //downloadFile("storage-cdn.llss.io", new File("media/GNxgQK50KWE.mp4"));
         } catch (Exception e) {
             exception(e);
+        }
+    }
+
+    public static void checkRunWithCmd(String[] args){
+        if (args.length > 0) {
+            return;
+        }
+        if (System.console() == null) {
+            JOptionPane.showMessageDialog(null, "You can only run it from console, for example, enter \"java -jar VRChatCacheCleaner.jar\" in cmd ", "ERROR", ERROR_MESSAGE);
+            System.exit(1);
         }
     }
 
@@ -97,6 +110,7 @@ public class PypyDanceVideoBooster implements HttpHandler {
                     System.out.println("HttpServer launched.");
                 } catch (BindException e) {
                     System.err.println(e.getLocalizedMessage());
+                    httpServer = null;
                 }
             }
             wait(5000);
@@ -166,7 +180,12 @@ public class PypyDanceVideoBooster implements HttpHandler {
         }
         if (printMemory() > 512) {
             System.err.println("Too many memory usage, server will be shutdown.");
-            http.getHttpContext().getServer().stop(1);
+            if (httpServer == null) {
+                http.getHttpContext().getServer().stop(1);
+            }
+            if (httpServer != null) {
+                httpServer.stop(1);
+            }
             httpServer = null;
             synchronized (this) {
                 this.notify();
