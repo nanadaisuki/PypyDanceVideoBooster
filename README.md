@@ -3,7 +3,7 @@
 When you play a video, it will create a cache of this video locally. 
 It can save network overhead and boost video loading.
 
-***The Software is updateing, all releases has already has been removed.**
+***The Software is updateing, all releases already has been removed.**
 
 ***The new version will enable compression to reduce hard drive usage.**
 
