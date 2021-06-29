@@ -1,5 +1,7 @@
 package pypydancevideobooster.https;
 
+import com.sun.net.httpserver.HttpExchange;
+import com.sun.net.httpserver.HttpHandler;
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -14,7 +16,7 @@ import static pypydancevideobooster.PypyDanceVideoBooster.downloading;
 /**
  * Created for http://stackoverflow.com/q/16351413/1266906.
  */
-public class Server extends Thread {
+public class Server extends Thread{
 
     public static void main(String[] args) {
         (new Server(5000)).start();
@@ -73,7 +75,7 @@ public class Server extends Thread {
             final boolean isYoutube;
             try {
                 request = readLine(clientSocket);
-                //System.out.println(request);
+                System.out.println(request);
                 if (request.indexOf("youtube") > 0 || request.indexOf("google") > 0 || request.indexOf("ytimg") > 0) {
                     isYoutube = true;
                     lastReceive = System.currentTimeMillis();
@@ -92,7 +94,7 @@ public class Server extends Thread {
                     final Socket forwardSocket;
                     try {
                         forwardSocket = new Socket(matcher.group(1), Integer.parseInt(matcher.group(2)));
-                        //System.out.println(forwardSocket);
+                        System.out.println(forwardSocket);
                     } catch (IOException | NumberFormatException e) {
                         e.printStackTrace();  // TODO: implement catch
                         outputStreamWriter.write("HTTP/" + matcher.group(3) + " 502 Bad Gateway\r\n");
@@ -177,7 +179,7 @@ public class Server extends Thread {
                         byte[] buffer = new byte[4096];
                         int read;
                         do {
-                            if (!isYoutube && System.currentTimeMillis() - lastReceive < waitYoutube || !downloading.isEmpty()) {
+                            if ((!isYoutube && System.currentTimeMillis() - lastReceive < waitYoutube) || !downloading.isEmpty()) {
                                 synchronized (AVATAR_LOADER) {
                                     if (System.currentTimeMillis() - antiSpam > waitYoutube) {
                                         System.out.println("Avatar has been limit to load, because youtube is running.");
