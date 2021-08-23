@@ -5,36 +5,28 @@ import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
 import com.sun.net.httpserver.spi.HttpServerProvider;
-import java.awt.event.WindowAdapter;
-import java.awt.event.WindowEvent;
+import test.RemovedFeatures;
 import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.BindException;
 import java.net.HttpURLConnection;
 import java.net.InetSocketAddress;
-import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map.Entry;
-import java.util.Scanner;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import javax.swing.JFrame;
-import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import static javax.swing.JOptionPane.ERROR_MESSAGE;
-import javax.swing.JProgressBar;
-import javax.swing.SwingConstants;
+import pypydancevideobooster.PlayListManager.CDN;
 import pypydancevideobooster.https.Server;
 import pypydancevideobooster.https.Server2;
 
@@ -52,12 +44,12 @@ public class PypyDanceVideoBooster implements HttpHandler {
         }
     }
 
-    public static void checkRunWithCmd(String[] args){
+    public static void checkRunWithCmd(String[] args) {
         if (args.length > 0) {
             return;
         }
         if (System.console() == null) {
-            JOptionPane.showMessageDialog(null, "You can only run it from console, for example, enter \"java -jar VRChatCacheCleaner.jar\" in cmd ", "ERROR", ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(null, "You can only run it from console, for example, enter \"java -jar PypyDanceVideoBooster.jar\" in cmd ", "ERROR", ERROR_MESSAGE);
             System.exit(1);
         }
     }
@@ -65,10 +57,20 @@ public class PypyDanceVideoBooster implements HttpHandler {
     public synchronized void run(String[] args) throws IOException, InterruptedException {
         String port = null;
         long youtubeTimeout = 5000;
+        System.out.print("Launching PypyDanceVideoBooster with params ");
         for (String arg : args) {
-            System.out.println(arg);
-            if (arg.charAt(0) == 45 && arg.contains("=")) {
-                String[] parm = arg.substring(1).split("=");
+            System.out.print(arg);
+            System.out.print(" ");
+        }
+        System.out.println("");
+        for (String arg : args) {
+            if (arg.charAt(0) == 45) {
+                String[] parm;
+                if (arg.contains("=")) {
+                    parm = arg.substring(1).split("=");
+                } else {
+                    parm = new String[]{arg.substring(1), ""};
+                }
                 if (parm[0].equals("port") && parm[1].matches("\\d{1,6}")) {
                     port = parm[1];
                 }
@@ -80,12 +82,30 @@ public class PypyDanceVideoBooster implements HttpHandler {
                     youtubeTimeout = Integer.parseInt(parm[1]);
                     System.out.println("Set youtube timeout to " + youtubeTimeout);
                 }
+                if (parm[0].equals("buildlist")) {
+                    PlayListManager.buildCacheList();
+                }
+                if (parm[0].equals("buildcache")) {
+                    if (parm[1].contains("PYPYDANCE")) {
+                        System.out.println("Forbidden to spread the generated cache files, absolutely forbidden! ! ");
+                        CDN cdn = CDN.valueOf(parm[1]);
+                        RemovedFeatures.buildCacheFile(cdn);
+                    } else {
+                        System.err.println("WARNING! Use the feature may cause your computer to get banned.");
+                        System.out.println("To get started, you need to add \"=\" and the CDN name after this parameter. "
+                                + "If you want to use the CDN of K.MOG, the CDN name is \"PYPYDANCE_\" and two letters, such as \"PYPYDANCE_JP\". "
+                                + "If you don't want to use CDN, you can also fill in \"NO_CDN\". "
+                                + "Currently, the new version of https API is not supported, because it is very complicated to interface with the https interface. I want to use this time for other projects. ");
+                    }
+                }
             }
         }
+        PlayListManager.init();
         File floder = new File("media");
         floder.mkdir();
         System.out.println("Media floder: " + floder.getCanonicalPath());
-        System.out.println("Launching the server on port " + port);
+        VideoCacheManager.init(floder);
+        System.out.println("Bind the CacheServer on port " + port + ", launching...");
         if (port == null) {
             List<String> list = new ArrayList(Arrays.asList(args));
             list.add("-port=12345");
@@ -101,15 +121,15 @@ public class PypyDanceVideoBooster implements HttpHandler {
         InetSocketAddress address = new InetSocketAddress(Integer.parseInt(port));
         while (true) {
             if (httpServer == null) {
-                System.out.println("HttpServer launching...");
+                System.out.println("Launching CacheServer");
                 try {
                     httpServer = provider.createHttpServer(address, 4);
                     httpServer.setExecutor(e);
                     httpServer.createContext("/", this);
                     httpServer.start();
-                    System.out.println("HttpServer launched.");
-                } catch (BindException e) {
-                    System.err.println(e.getLocalizedMessage());
+                    System.out.println("CacheServer launched.");
+                } catch (BindException be) {
+                    System.err.println(be.getLocalizedMessage());
                     httpServer = null;
                 }
             }
@@ -145,13 +165,15 @@ public class PypyDanceVideoBooster implements HttpHandler {
         if (requestMethod.equals("GET") || requestMethod.equals("HEAD")) {
         } else {
             System.out.println("Request method \"" + requestMethod + "\" not implemented!");
+            http.close();
             return;
         }
-        String hostName = http.getRequestURI().getHost();
-        System.out.println(hostName);
+        String hostName = http.getRequestURI().getHost();;
         if (dev || hostName.equals("storage-jp.llss.io") || hostName.equals("storage-cdn.llss.io")) {
         } else {
+            System.err.println(hostName);
             System.err.println("Bad configure.");
+            http.close();
             return;
         }
         String fileName = http.getRequestURI().toString();
@@ -161,7 +183,8 @@ public class PypyDanceVideoBooster implements HttpHandler {
             System.out.println("Request file " + fileName);
             fileName = "/" + m.group(0);
         } else {
-            System.err.println(fileName);
+            System.err.println(fileName + " not mp4 file! ");
+            http.close();
             return;
         }
         fileName = "media" + fileName;
@@ -177,13 +200,18 @@ public class PypyDanceVideoBooster implements HttpHandler {
             }
         } catch (Exception e) {
             exception(e);
+        } finally {
+            http.close();
+        }
+        if (httpServer == null) {
+            System.out.println("force stop!");
+            http.close();
+            http.getHttpContext().getServer().stop(1);
         }
         if (printMemory() > 512) {
             System.err.println("Too many memory usage, server will be shutdown.");
-            if (httpServer == null) {
-                http.getHttpContext().getServer().stop(1);
-            }
             if (httpServer != null) {
+                http.close();
                 httpServer.stop(1);
             }
             httpServer = null;
@@ -229,6 +257,7 @@ public class PypyDanceVideoBooster implements HttpHandler {
     }
 
     private void sendFile(HttpExchange http, File f, boolean onlyHead) throws FileNotFoundException, IOException, InterruptedException {
+        String videoId = f.getName().replace(".mp4", "");
         Headers headers = http.getResponseHeaders();
         headers.add("Server", "server1");
         String connection = http.getRequestHeaders().get("Connection").get(0);
@@ -284,7 +313,7 @@ public class PypyDanceVideoBooster implements HttpHandler {
             try {
                 bis.skip(startRange);
                 bis.read(buffer, 0, rangeLength);
-
+                System.out.println("Playing " + PlayListManager.getVideoName(videoId));
                 bos.write(buffer);
             } catch (Exception e) {
                 if (e instanceof IndexOutOfBoundsException) {
@@ -296,133 +325,19 @@ public class PypyDanceVideoBooster implements HttpHandler {
                 }
             } finally {
                 buffer = null;
-                http.close();
-                bis.close();
+                try {
+                    bis.close();
+                    bos.close();
+                } catch (IOException e1) {
+                    if (e1.getMessage().equals("insufficient bytes written to stream")) {
 
-                bos.close();
-                System.out.println("connection close");
+                    }
+                }
                 System.gc();
             }
         } else {
-            if (downloadFile("storage-cdn.llss.io", f, http.getResponseBody())) {
-                this.sendFile(http, f, onlyHead);
-                return;
-            }
-            http.sendResponseHeaders(404, 0);
-            this.outputReponseHeaders(http);
-            throw new FileNotFoundException(f.getCanonicalPath());
-        }
-    }
-
-    public static List<String> downloading = new ArrayList();
-    static long lastCall = System.currentTimeMillis();
-
-    private static boolean downloadFile(String host, File outputFile, OutputStream syncStream) {
-        try {
-            if (System.currentTimeMillis() - lastCall < 1000 || downloading.contains(outputFile.getName())) {
-                System.err.println("already downloading!");
-                return false;
-            } else {
-                downloading.add(outputFile.getName());
-            }
-            URL url = new URL("http://" + host + "/" + outputFile.getName());
-            System.out.println("Downloading file " + outputFile.getCanonicalPath() + " from " + url.toString());
-            HttpURLConnection request = (HttpURLConnection) url.openConnection();
-            int mood = request.getResponseCode();
-            if (mood == 200 || mood == 206 || mood == 304) {
-                //It's ok
-            } else {
-                System.out.println(headersToString(request));
-                throw new IllegalStateException("It's in a bad mood...");
-            }
-            if (mood != 200) {
-                System.err.println("download response code: " + mood);
-            }
-            InputStream is = request.getInputStream();
-            int length = Integer.parseInt(request.getHeaderField("Content-Length"));
-            System.out.println("Content-Lengrh: " + length);
-            int realLength = is.available();
-            if (realLength == 0) {
-                System.out.println("Waiting connection intput stream");
-            }
-            while (realLength == 0) {
-                realLength = is.available();
-            }
-            if (realLength != length) {
-                System.err.println("InputStream length " + realLength + " not match HTTP length " + length);
-            }
-            int bufferSize = length;
-            byte[] buffer = new byte[bufferSize];
-            BufferedInputStream bis = new BufferedInputStream(is);
-            System.out.println("Download connection ok.");
-            FileOutputStream fos = new FileOutputStream(outputFile);
-            System.out.println("Download output stream ok.");
-            JFrame jFrame = new JFrame();
-            jFrame.setSize(300, 80);
-            JLabel jLabel = new JLabel();
-            JProgressBar jProgressBar = new JProgressBar();
-            jLabel.setSize(300, 50);
-            jLabel.setText("name");
-            jLabel.setHorizontalAlignment(SwingConstants.CENTER);
-            jLabel.setVerticalAlignment(SwingConstants.CENTER);
-            jFrame.add(jLabel);
-            jProgressBar.setValue(50);
-            jFrame.add(jProgressBar);
-            jFrame.addWindowListener(new WindowAdapter() {
-                InputStream is;
-
-                @Override
-                public void windowClosing(WindowEvent e) {
-                    try {
-                        is.close();
-                    } catch (IOException ex) {
-                        exception(ex);
-                    }
-                }
-
-                public WindowAdapter addCallback(InputStream is) {
-                    this.is = is;
-                    return this;
-                }
-            }.addCallback(is));
-            jFrame.setTitle("Downloading...");
-            jFrame.setResizable(false);
-            jFrame.setVisible(true);
-
-            int readCount = 0, lastCount = 0, updateRate = 25;
-            jLabel.setText(outputFile.getName());
-            while (readCount < length) {
-                int remain = length - readCount;
-
-                readCount += bis.read(buffer, readCount, remain);
-                if (syncStream != null) {
-
-                }
-                int process = (int) ((double) readCount / length * 100);
-
-                jProgressBar.setValue(process);
-                if (process > 0) {
-                    jFrame.setTitle(outputFile.getName());
-                }
-                process /= updateRate;
-                if (process != lastCount) {
-                    System.out.println("Downloading..." + process * updateRate + "%");
-                    lastCount = process;
-                }
-            }
-            fos.write(buffer);
-            bis.close();
-            fos.close();
-            request.disconnect();
-            System.out.println("Download done.");
-            System.gc();
-            jFrame.dispose();
-            downloading.remove(outputFile.getName());
-            return true;
-        } catch (Exception e) {
-            exception(e);
-            downloading.remove(outputFile.getName());;
-            return false;
+            VideoCacheManager.download(videoId, CDN.PYPYDANCE_JP);
+            this.sendFile(http, f, onlyHead);
         }
     }
 

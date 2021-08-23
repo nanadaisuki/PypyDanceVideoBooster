@@ -1,7 +1,5 @@
 package pypydancevideobooster.https;
 
-import com.sun.net.httpserver.HttpExchange;
-import com.sun.net.httpserver.HttpHandler;
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -11,7 +9,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import static pypydancevideobooster.PypyDanceVideoBooster.downloading;
+import static pypydancevideobooster.VideoCacheManager.downloading;
 
 /**
  * Created for http://stackoverflow.com/q/16351413/1266906.
@@ -22,7 +20,7 @@ public class Server extends Thread{
         (new Server(5000)).start();
     }
 
-    final static Object AVATAR_LOADER = new Object();
+    final static Object AVATAR_LOCK = new Object();
     static long waitYoutube = 5000;
     static long lastReceive = System.currentTimeMillis();
 
@@ -39,10 +37,10 @@ public class Server extends Thread{
         ServerSocket serverSocket = null;
         while (true) {
             if (serverSocket == null) {
-                System.out.println("HttpsServer launching...");
+                System.out.println("Launching LimitServer");
                 try {
                     serverSocket = new ServerSocket(9999);
-                    System.out.println("HttpsServer launched.");
+                    System.out.println("LimitServer launched.");
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
@@ -75,7 +73,7 @@ public class Server extends Thread{
             final boolean isYoutube;
             try {
                 request = readLine(clientSocket);
-                System.out.println(request);
+                //System.out.println(request);
                 if (request.indexOf("youtube") > 0 || request.indexOf("google") > 0 || request.indexOf("ytimg") > 0) {
                     isYoutube = true;
                     lastReceive = System.currentTimeMillis();
@@ -94,7 +92,7 @@ public class Server extends Thread{
                     final Socket forwardSocket;
                     try {
                         forwardSocket = new Socket(matcher.group(1), Integer.parseInt(matcher.group(2)));
-                        System.out.println(forwardSocket);
+                        //System.out.println(forwardSocket);
                     } catch (IOException | NumberFormatException e) {
                         e.printStackTrace();  // TODO: implement catch
                         outputStreamWriter.write("HTTP/" + matcher.group(3) + " 502 Bad Gateway\r\n");
@@ -156,8 +154,8 @@ public class Server extends Thread{
                 }
                 if (request.indexOf("youtube") > 0 || request.indexOf("google") > 0 || request.indexOf("ytimg") > 0) {
                     if (System.currentTimeMillis() - lastReceive > waitYoutube) {
-                        synchronized (AVATAR_LOADER) {
-                            AVATAR_LOADER.notifyAll();
+                        synchronized (AVATAR_LOCK) {
+                            AVATAR_LOCK.notifyAll();
                         }
                         System.out.println("Remove all load limits.");
                     }
@@ -180,12 +178,12 @@ public class Server extends Thread{
                         int read;
                         do {
                             if ((!isYoutube && System.currentTimeMillis() - lastReceive < waitYoutube) || !downloading.isEmpty()) {
-                                synchronized (AVATAR_LOADER) {
+                                synchronized (AVATAR_LOCK) {
                                     if (System.currentTimeMillis() - antiSpam > waitYoutube) {
                                         System.out.println("Avatar has been limit to load, because youtube is running.");
                                         antiSpam = System.currentTimeMillis();
                                     }
-                                    AVATAR_LOADER.wait(waitYoutube);
+                                    AVATAR_LOCK.wait(waitYoutube);
                                 }
                             }
                             read = inputStream.read(buffer);

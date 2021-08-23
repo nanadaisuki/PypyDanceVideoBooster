@@ -14,30 +14,38 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
-import static java.lang.Thread.sleep;
-import java.util.HashMap;
 import java.util.Iterator;
-import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class PlayListManager {
 
-    static Map<String, String> playlistCenter;
+    public static JsonObject playlist;
 
-    public PlayListManager() {
-        init();
+    public static boolean init() {
+        File floder = new File("playlist");
+        floder.mkdir();
+        System.out.println("Playlist floder: " + floder.getAbsolutePath());
+        File cacheFile = new File(floder.getName() + "/cache.json");
+        FileInputStream fis;
+        try {
+            fis = new FileInputStream(cacheFile);
+        } catch (FileNotFoundException ex) {
+            System.err.println("No playlist cache. ");
+            playlist = new JsonObject();
+            return false;
+        }
+        InputStreamReader isr = new InputStreamReader(fis);
+        BufferedReader br = new BufferedReader(isr);
+        Gson gson = new Gson();
+        JsonObject jsonObject = gson.fromJson(br, JsonObject.class);
+        playlist = jsonObject;
+        System.out.println("Playlist loaded " + playlist.size() + " entries ");
+        return true;
     }
 
-    private void init() {
-        playlistCenter = new HashMap();
-    }
-
-    public void downloadPlayList() {
-        System.err.println("This feature has not yet been implemented. ");
-    }
-
-    public void buildCacheFile() {
+    public static void buildCacheList() {
+        System.out.println("Building playlist...");
         File floder = new File("playlist");
         floder.mkdir();
         File cacheFile = new File(floder.getName() + "/cache.json");
@@ -50,10 +58,11 @@ public class PlayListManager {
             Logger.getLogger(PlayListManager.class.getName()).log(Level.SEVERE, null, ex);
             try {
                 cacheFile.createNewFile();
-                buildCacheFile();
+                buildCacheList();
                 return;
             } catch (IOException ex1) {
-                Logger.getLogger(PlayListManager.class.getName()).log(Level.SEVERE, null, ex1);
+                System.err.println(ex1);
+                System.err.println("Unable to build playlist because: " + ex1.getLocalizedMessage());
                 return;
             }
         }
@@ -89,7 +98,7 @@ public class PlayListManager {
                 JsonObject urlJson = contentArray.get(1).getAsJsonObject();
                 String name = nameJson.get("content").getAsString();
                 String url = urlJson.get("content").getAsString();
-                String videoId = url.substring(9);
+                String videoId = url.substring(9).replace("&amp;pp=sAQA", "");
                 cacheJson.addProperty(videoId, name);
                 sb.append(videoId).append(": ").append(name);
                 sb.append('\n');
@@ -104,10 +113,14 @@ public class PlayListManager {
         } catch (IOException ex) {
             Logger.getLogger(PlayListManager.class.getName()).log(Level.SEVERE, null, ex);
         }
+        System.out.println("Successfully build playlist. ");
+        PlayListManager.init();
     }
 
     public static String getVideoName(String videoId) {
-        return playlistCenter.get(videoId);
+        JsonElement je = playlist.get(videoId);
+
+        return je == null ? "NOT_INCLUDED" : je.getAsString();
     }
 
     public static String getYoutubeLink(String videoId) {
@@ -118,23 +131,27 @@ public class PlayListManager {
         PYPYDANCE_NEARBY, PYPYDANCE_HK, PYPYDANCE_JP, PYPYDANCE_US, NO_CDN
     }
 
-    public static String getDownloadLink(CDN cdn, String videoId) {
+    public static String getDownloadLink(String videoId, CDN cdn) {
+        StringBuilder link = new StringBuilder("http://");
         switch (cdn) {
             case PYPYDANCE_NEARBY:
             //break;
             case PYPYDANCE_HK:
             //break;
             case PYPYDANCE_JP:
-            //break;
+                link.append("storage-jp.llss.io/");
+                break;
             case PYPYDANCE_US:
-                return "This feature has not yet been implemented. ";
-            //break;
+                link.append("storage-cdn.llss.io/");
+                break;
             case NO_CDN:
-                System.err.println("This feature has not yet been implemented. ");
                 return getYoutubeLink(videoId);
             default:
                 return "The specified CDN node does not exist. ";
         }
+        link.append(videoId);
+        link.append(".mp4");
+        return link.toString();
     }
 
 }

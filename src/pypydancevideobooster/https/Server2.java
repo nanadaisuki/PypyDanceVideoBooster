@@ -93,7 +93,7 @@ public class Server2 implements HttpHandler {
         HttpsConfigurator httpsConfigurator = new HttpsConfigurator(sslContext);
         https.setHttpsConfigurator(httpsConfigurator);
         https.start();
-        System.out.println("Server2 launched.");
+        System.out.println("Domain name resolution ok, pypydance server launched.");
         Runtime.getRuntime().addShutdownHook(new Thread() {
             @Override
             public void run() {
@@ -131,10 +131,13 @@ public class Server2 implements HttpHandler {
         boolean b = false;
         BufferedReader br = null;
         try {
+            System.out.println("Checking domain name resolution...");
             br = new BufferedReader(new InputStreamReader(new FileInputStream(ho)));
             String read;
             while ((read = br.readLine()) != null) {
-                System.out.println(read);
+                if (!read.isEmpty()) {
+                                     System.out.println(read);
+                }
                 if (read.equals("127.0.0.1 jd.pypy.moe")) {
                     b = true;
                 }
