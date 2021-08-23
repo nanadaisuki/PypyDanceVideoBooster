@@ -13,26 +13,18 @@
     <HttpProxiesSupport enabled="true" />
     <HandleDirectConnections enabled="false" />
     <ConnectionLoopDetection enabled="true" />
-    <ProcessServices enabled="false" />
-    <ProcessOtherUsers enabled="false" />
+    <ProcessServices enabled="true" />
+    <ProcessOtherUsers enabled="true" />
   </Options>
   <ProxyList>
-    <Proxy id="100" type="SOCKS5">
-      <Address>localhost</Address>
-      <Port>10808</Port>
-      <Options>48</Options>
-    </Proxy>
-    <Proxy id="101" type="HTTPS">
-      <Address>localhost</Address>
-      <Port>10809</Port>
-      <Options>48</Options>
-    </Proxy>
     <Proxy id="102" type="HTTP">
+      <Label>CacheServer</Label>
       <Address>127.0.0.1</Address>
       <Port>12345</Port>
       <Options>48</Options>
     </Proxy>
     <Proxy id="103" type="HTTPS">
+      <Label>LoadSensor</Label>
       <Address>127.0.0.1</Address>
       <Port>9999</Port>
       <Options>50</Options>
@@ -40,40 +32,31 @@
   </ProxyList>
   <ChainList />
   <RuleList>
-    <Rule enabled="false">
-      <Name>New</Name>
-      <Applications>youtube-dl.exe</Applications>
-      <Action type="Proxy">100</Action>
-    </Rule>
-    <Rule enabled="true">
-      <Name>Direct</Name>
-      <Applications>wv2ray.exe;v2ray.exe</Applications>
-      <Action type="Direct" />
-    </Rule>
     <Rule enabled="true">
       <Name>localhost</Name>
-      <Targets>localhost;127.0.0.1;jd.pypy.moe</Targets>
+      <Targets>localhost;127.0.0.1;jd.pypy.moe; 192.168.43.*</Targets>
       <Action type="Direct" />
     </Rule>
     <Rule enabled="true">
-      <Name>out_PDVB</Name>
+      <Name>DownloadVideo</Name>
       <Applications>java.exe; javaw.exe</Applications>
       <Targets>storage-cdn.llss.io;storage-jp.llss.io;</Targets>
       <Action type="Direct" />
     </Rule>
     <Rule enabled="true">
-      <Name>out_Avatar</Name>
+      <Name>DownloadAvatar</Name>
       <Applications>java.exe; javaw.exe</Applications>
       <Targets>d348imysud55la.cloudfront.net</Targets>
       <Action type="Direct" />
     </Rule>
     <Rule enabled="true">
-      <Name>out_URL</Name>
+      <Name>DownloadYoutube</Name>
       <Applications>java.exe; javaw.exe</Applications>
-      <Action type="Proxy">100</Action>
+      <Targets> *.youtube.com;*.google.com;*.googlevideo.com</Targets>
+      <Action type="Direct" />
     </Rule>
     <Rule enabled="true">
-      <Name>PypyDanceVideoBooster</Name>
+      <Name>PypyDance_List</Name>
       <Targets>storage-cdn.llss.io;storage-jp.llss.io;</Targets>
       <Action type="Proxy">102</Action>
     </Rule>
@@ -83,12 +66,12 @@
       <Action type="Proxy">103</Action>
     </Rule>
     <Rule enabled="true">
-      <Name>PypyDance_Area</Name>
+      <Name>PypyDance_YTB</Name>
       <Targets>storage.llss.io; *.youtube.com;*.google.com;*.googlevideo.com</Targets>
       <Action type="Proxy">103</Action>
     </Rule>
     <Rule enabled="true">
-      <Name>AvatarLimiter</Name>
+      <Name>Avatar</Name>
       <Applications>vrchat.exe</Applications>
       <Targets>d348imysud55la.cloudfront.net</Targets>
       <Action type="Proxy">103</Action>
