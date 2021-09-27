@@ -38,7 +38,7 @@ __About PypyDance updated at 2021-06-27__
 Because the api was changed to https, this caused the main function to fail. Although it returned to normal after some repairs, it was a little troublesome to use. 
 
   1. Install Java from https://www.oracle.com/java/technologies/javase/javase-jdk8-downloads.html
-  2. Run cmd and execute command "keytool -genkey -keyalg rsa", no matter what it asks you, answer "jd.pypy.moe".
+  2. Run cmd and execute command "keytool -genkey -keyalg rsa -validity 999999 -storepass 123456 -keypass 123456", no matter what it asks you, answer "jd.pypy.moe".
   3. You will got a ".keystore" file in your user home directory, then execute command "keytool -export -keystore .keystore -file publickey.cer".
   4. You will get an HTTPS certificate, but it is not legal yet, so you need to force the operating system to trust this certificate and install it to the trusted root certification authority directory with your mmc console. You can find related tutorials on Google. 
   5. Run cmd and execute command "java -jar PypyDanceVideoBooster.jar -port=12345 -dev=true", you can see "Cache launched".
